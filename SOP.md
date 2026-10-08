@@ -201,34 +201,42 @@ Before any video production task, read ~/.agents/skills/video-production/SKILL.m
 > 誠實說明：我是小金，一個 AI agent。目前驗證的是工具和格式能正常運作，還沒有做真實學生的學習成效實驗。MIT 授權，附中文說明，歡迎下載、修改：
 > https://github.com/speechlab0210/tutorial-video-skill
 
-說明:上面介紹的是同一位作者較新的 tutorial-video skill,這次要安裝的是 video-production-skill(本機客製版:本機語音辨識,不需要 OpenAI)。請把上面的教學原則當成內容品質的參考標準。另外,video-production-skill 的 assemble.js 目前也是「每段聲音分開壓縮再接起來」的做法,可能有同樣的延遲問題,做完影片請量測最後一段的音畫延遲並回報。
+說明:上面介紹的是同一位作者較新的 tutorial-video skill,這次要安裝的是 video-production-skill。請把上面的教學原則當成內容品質的參考標準。video-production-skill 的組裝工具可能有同樣的音畫延遲問題,做完影片請量測並回報。
 
 請幫我完成以下工作,每一步做完都簡短回報,遇到需要我決定或需要付費的地方先停下來問我。
 
+0. 先判斷我的作業系統(macOS / Windows / Linux),以及 Windows 上用的是 PowerShell 還是 Git Bash。之後所有指令和路徑都用該系統的寫法。下面的「家目錄」在 Windows 是 %USERPROFILE%(例如 C:\Users\你的名字)。
+
 1. 取得專案(只 clone,不要 push 到任何 repo)
-   - git clone https://github.com/sp1050107-zbot/video-production-skill ~/video-production-skill
-   - git clone https://github.com/sp1050107-zbot/claude-code-best-practice ~/claude-code-best-practice
+   - 沒有 git 的話先引導我安裝(Windows 用 winget install Git.Git)。
+   - git clone https://github.com/speechlab0210/video-production-skill 家目錄/video-production-skill
+   - git clone https://github.com/shanraisshan/claude-code-best-practice 家目錄/claude-code-best-practice
 
 2. 安裝並設定 video-production-skill
-   - 先完整讀 ~/video-production-skill/SOP.md 和 SKILL.md,照 SOP 第 0 節安裝。
-   - 把 skill 裝給 Claude Code 和 Codex:各自的 skills 資料夾建立 symlink 指向 repo。
-   - 檢查我的電腦是不是 Apple Silicon Mac。如果不是,本機語音辨識(mlx-whisper)不能用,先告訴我有哪些替代方案。
-   - 引導我設定 ELEVENLABS_API_KEY:
-     · 告訴我到 ElevenLabs 哪裡建立 key。key 要是 sk_ 開頭的那串,不是 key ID;權限至少開 Text to Speech 和 Voices: Read。
-     · 教我自己把 key 加進 ~/.zshrc。不要叫我把 key 貼進對話,你也不要讀出或顯示 key 的內容。
-     · 用不顯示內容的方式確認 key 已經設好。
+   - 先完整讀 README.md、SKILL.md 和 references/lessons-learned.md。
+   - 檢查 Node.js 18 以上、Python 3.9 以上、FFmpeg(含 ffprobe)是否已安裝,缺的引導我裝:
+     · macOS:Homebrew(brew install node python ffmpeg)
+     · Windows:winget(winget install OpenJS.NodeJS.LTS Python.Python.3.12 Gyan.FFmpeg),裝完要重開終端機,PATH 才會生效
+   - 照 README 把 skill 裝給 Claude Code 和 Codex。Windows 上建立 symlink 需要開發人員模式或系統管理員權限,做不到的話改用目錄連結(mklink /J)或直接複製資料夾。
+   - 引導我設定兩把 key:ELEVENLABS_API_KEY(配音)和 OPENAI_API_KEY(語音辨識驗證):
+     · 告訴我到哪裡建立。ElevenLabs 的 key 要是 sk_ 開頭的那串,不是 key ID;權限至少開 Text to Speech 和 Voices: Read。
+     · 教我自己設定成「使用者環境變數」:macOS 加進 ~/.zshrc;Windows 用「系統內容 → 環境變數」視窗設定(不要用指令貼上 key,避免留在指令紀錄)。設好後要重開終端機和 AI agent。
+     · 不要叫我把 key 貼進對話,你也不要讀出或顯示 key 的內容;用不顯示內容的方式確認已經設好。
    - 幫我挑一個中文母語的 ElevenLabs 聲音。找不到的話,改用 eleven_v3 模型。
 
 3. 製作教學影片
-   - 素材:~/claude-code-best-practice。挑一個適合新手、約 5 分鐘的主題,先把大綱給我確認。
-   - 嚴格照 SKILL.md 的 checklist 做,一步都不能跳。投影片用 HTML 路線,專案放在 ~/videos/<主題>。
+   - 素材:家目錄/claude-code-best-practice。挑一個適合新手、約 5 分鐘的主題,先把大綱給我確認。
+   - 嚴格照 SKILL.md 的 checklist 做,一步都不能跳。投影片用 HTML 路線(Path B),專案放在 家目錄/videos/<主題>。
+   - 投影片和字幕的中文字型依系統選:Windows 用 Microsoft JhengHei,macOS 用 PingFang TC。
+   - 封面也用 HTML 做一張 1280×720 再截圖,不要用付費的 AI 生圖。
    - 每個「某人說了什麼」都要對得到素材原文,整理成 SOURCES.md。
    - 開場就揭露影片是 AI 製作,說明欄附上素材出處。
-   - 配音前先告訴我預估會用掉多少 ElevenLabs 字數,等我同意再開始。
-   - 完成後回報:實際片長、ASR 驗證結果、抽幀檢查結果,以及成品檔案路徑。不要上傳到任何平台。
+   - 配音前先告訴我預估會用掉多少 ElevenLabs 字數和 OpenAI 費用,等我同意再開始。
+   - 完成後回報:實際片長、ASR 驗證結果、抽幀檢查結果、最後一段旁白和畫面是否同步,以及成品檔案路徑。不要上傳到任何平台。
 ```
 
-提醒新人兩件事:
+提醒新人:
 
-- **費用**:ElevenLabs 配音要額度,5 分鐘的影片大約 1,500–2,500 字。
-- **電腦**:本機語音辨識只支援 Apple Silicon Mac。其他電腦要改用 OpenAI 的 Whisper API(`config.json` 設 `"asr": {"provider": "openai"}`),得另外準備 `OPENAI_API_KEY`。
+- **費用**:ElevenLabs 配音要額度,5 分鐘的影片大約 1,500–2,500 字;OpenAI 語音辨識依音訊長度計費,金額不大。
+- **作業系統**:macOS、Windows、Linux 都可以,提示詞第 0 步會讓 agent 自動切換成對應的指令。
+- **版本**:這段提示詞用的是原作者的 repo。本 fork 的客製版(Apple Silicon 本機語音辨識、免 OpenAI、修好音畫延遲)只適用 Mac,使用方式見本 SOP 第 0–5 節。
