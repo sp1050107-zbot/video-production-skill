@@ -175,3 +175,38 @@ Before any video production task, read ~/.agents/skills/video-production/SKILL.m
   原作者若也改了同一個檔案(例如 `tts_with_asr.js`、`gen_subtitles.js`),合併時可能出現衝突,解完再 push。
 - 想把改動回饋給原作者:到 GitHub 開 PR 到 `speechlab0210/video-production-skill`,需要原作者同意才會合併。
 - `.venv/`、`node_modules/`、`.env`、`.serena/`、影音產物都已列在 `.gitignore`;commit 前仍建議掃一次有沒有 `sk_` / `sk-` 開頭的 key。
+
+## 7. 給新人:交給自己 AI agent 的起手提示詞
+
+新人不用先讀完這份 SOP,把下面整段貼給自己的 AI agent(Claude Code 或 Codex 都可以)就好:
+
+```text
+請幫我完成以下工作,每一步做完都簡短回報,遇到需要我決定或需要付費的地方先停下來問我。
+
+1. 取得專案(只 clone,不要 push 到任何 repo)
+   - git clone https://github.com/sp1050107-zbot/video-production-skill ~/video-production-skill
+   - git clone https://github.com/sp1050107-zbot/claude-code-best-practice ~/claude-code-best-practice
+
+2. 安裝並設定 video-production-skill
+   - 先完整讀 ~/video-production-skill/SOP.md 和 SKILL.md,照 SOP 第 0 節安裝。
+   - 把 skill 裝給 Claude Code 和 Codex:各自的 skills 資料夾建立 symlink 指向 repo。
+   - 檢查我的電腦是不是 Apple Silicon Mac。如果不是,本機語音辨識(mlx-whisper)不能用,先告訴我有哪些替代方案。
+   - 引導我設定 ELEVENLABS_API_KEY:
+     · 告訴我到 ElevenLabs 哪裡建立 key。key 要是 sk_ 開頭的那串,不是 key ID;權限至少開 Text to Speech 和 Voices: Read。
+     · 教我自己把 key 加進 ~/.zshrc。不要叫我把 key 貼進對話,你也不要讀出或顯示 key 的內容。
+     · 用不顯示內容的方式確認 key 已經設好。
+   - 幫我挑一個中文母語的 ElevenLabs 聲音。找不到的話,改用 eleven_v3 模型。
+
+3. 製作教學影片
+   - 素材:~/claude-code-best-practice。挑一個適合新手、約 5 分鐘的主題,先把大綱給我確認。
+   - 嚴格照 SKILL.md 的 checklist 做,一步都不能跳。投影片用 HTML 路線,專案放在 ~/videos/<主題>。
+   - 每個「某人說了什麼」都要對得到素材原文,整理成 SOURCES.md。
+   - 開場就揭露影片是 AI 製作,說明欄附上素材出處。
+   - 配音前先告訴我預估會用掉多少 ElevenLabs 字數,等我同意再開始。
+   - 完成後回報:實際片長、ASR 驗證結果、抽幀檢查結果,以及成品檔案路徑。不要上傳到任何平台。
+```
+
+提醒新人兩件事:
+
+- **費用**:ElevenLabs 配音要額度,5 分鐘的影片大約 1,500–2,500 字。
+- **電腦**:本機語音辨識只支援 Apple Silicon Mac。其他電腦要改用 OpenAI 的 Whisper API(`config.json` 設 `"asr": {"provider": "openai"}`),得另外準備 `OPENAI_API_KEY`。
