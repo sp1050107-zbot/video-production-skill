@@ -37,8 +37,20 @@ else if(mode==='burn'){
   // dark text inside the white bottom band; FontSize/MarginV tuned for 1080p 140px band.
   // For full-bleed dark slides (HTML path) use SUB_FS=14-18, SUB_MV=6-12 and a
   // BorderStyle=3 boxed style instead — see SKILL.md Step 6.
-  const FS=process.env.SUB_FS||'30', MV=process.env.SUB_MV||'30';
-  const style=`FontName=Microsoft JhengHei,FontSize=${FS},PrimaryColour=&H00202020,OutlineColour=&H00FFFFFF,BorderStyle=1,Outline=1,Shadow=0,MarginV=${MV},Alignment=2`;
+  // SUB_STYLE=dark: white text in a translucent black box, for full-bleed dark HTML slides.
+  const DARK=process.env.SUB_STYLE==='dark';
+  const FS=process.env.SUB_FS||(DARK?'16':'30'), MV=process.env.SUB_MV||(DARK?'10':'30');
+  const FONT=process.env.SUB_FONT||(process.platform==='darwin'?'PingFang TC':'Microsoft JhengHei');
+  const style=DARK
+    ? `FontName=${FONT},FontSize=${FS},PrimaryColour=&H00FFFFFF,BackColour=&H66000000,OutlineColour=&H66000000,BorderStyle=3,Outline=6,Shadow=0,MarginV=${MV},Alignment=2`
+    : `FontName=${FONT},FontSize=${FS},PrimaryColour=&H00202020,OutlineColour=&H00FFFFFF,BorderStyle=1,Outline=1,Shadow=0,MarginV=${MV},Alignment=2`;
+  // Homebrew's ffmpeg is built without libass, so the subtitles filter may not exist.
+  if(!/\bsubtitles\b/.test(execSync(`"${FFMPEG}" -hide_banner -filters`,{encoding:'utf8'}))){
+    console.error('ERROR: this ffmpeg has no "subtitles" filter (built without libass) — cannot burn in.');
+    console.error('Ship subtitles_aligned.srt as a caption track instead, or embed it as a soft track:');
+    console.error('  ffmpeg -i video.mp4 -i subtitles_aligned.srt -c copy -c:s mov_text -metadata:s:s:0 language=chi video_softsub.mp4');
+    process.exit(1);
+  }
   // ffmpeg subtitles filter needs escaped path on Windows
   const srtEsc=srt.replace(/\\/g,'/').replace(/:/g,'\\:');
   execSync(`"${FFMPEG}" -y -i "${vin}" -vf "subtitles='${srtEsc}':force_style='${style}'" -c:v libx264 -tune stillimage -pix_fmt yuv420p -c:a copy "${vout}"`,{stdio:'pipe'});

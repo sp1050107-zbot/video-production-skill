@@ -1,6 +1,6 @@
 ---
 name: video-production
-description: "AI educational video production pipeline. Use when producing lecture videos, tutorial videos, or educational content. Covers script writing, slide generation (gpt-image-2 hand-drawn style or HTML), TTS narration (ElevenLabs) with ASR verification, subtitle alignment, and FFmpeg video assembly."
+description: "AI educational video production pipeline. Use when producing lecture videos, tutorial videos, or educational content. Covers script writing, slide generation (HTML + Playwright, or gpt-image-2 hand-drawn style), TTS narration (ElevenLabs) with local-Whisper ASR verification, subtitle alignment, and FFmpeg video assembly."
 ---
 
 # Video Production Skill
@@ -16,24 +16,28 @@ Distilled from producing 40+ real videos for an AI-run YouTube channel (蝦說 A
 0. Read references/teaching-style.md + references/narration-style.md (content quality rules)
 1. Create project directory and cd into it; copy config.json from references/config-example.json and fill it in
 2. Write narration.json (the script — one string per slide)
-3. Generate slides (Path A: gpt-image-2 hand-drawn / Path B: HTML + Playwright screenshot)
+3. Generate slides (Path B: HTML + Playwright screenshot — this install's default / Path A: gpt-image-2, needs OPENAI_API_KEY)
 4. Visually inspect every slide PNG (wrong characters / clipping / unreadable fonts)
 5. TTS narration → MP3 (with built-in ASR verification)   → node scripts/tts_with_asr.js
 6. FFmpeg assemble → video.mp4                            → node scripts/assemble.js
 7. Quality check (bitrate + frame extraction + visual)
 8. Subtitles → SRT (+ optional burn-in)                   → node scripts/gen_subtitles.js
-9. Cover image → thumbnail                                → python scripts/cover_gen.py
+9. Cover image → thumbnail                                → node scripts/cover_html.js
 10. Upload wherever you publish; verify the thumbnail and visibility after upload
 ```
 
 ## Requirements
 
 - **Node.js** ≥ 18 (scripts use only built-ins + `playwright` for HTML screenshots)
-- **Python** ≥ 3.9 (only for gpt-image-2 slide/cover generation and optional rescore)
+- **Python** ≥ 3.9 with **mlx-whisper** (local ASR, Apple Silicon) + `pypinyin`.
+  The scripts auto-use `<repo>/.venv/bin/python` if it exists. One-time setup, from the repo root:
+  `uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python mlx-whisper pypinyin`
+  (first transcription downloads the ~1.6GB model).
+- **Playwright** for HTML slides/cover: `npm install && npx playwright install chromium` in the repo root.
 - **FFmpeg + FFprobe** on PATH (or set explicit paths in `config.json`)
 - **API keys** (environment variables, or a `.env` file in the project directory):
-  - `ELEVENLABS_API_KEY` — TTS
-  - `OPENAI_API_KEY` — Whisper ASR verification + gpt-image-2 slides/cover
+  - `ELEVENLABS_API_KEY` — TTS (the only key required)
+  - `OPENAI_API_KEY` — *optional*: only for `asr.provider: "openai"` or Path A gpt-image-2 slides/cover
 - A **TTS voice**: set `tts.voiceId` in `config.json` (any voice from your ElevenLabs
   voice library — a premade voice works out of the box; a cloned voice makes it yours).
 
@@ -56,8 +60,8 @@ Create `config.json` in your project directory (start from `references/config-ex
     "maxRetries": 5
   },
   "asr": {
-    "provider": "openai",
-    "model": "whisper-1",
+    "provider": "local",
+    "localModel": "mlx-community/whisper-large-v3-turbo",
     "language": "zh",
     "passThreshold": 0.85
   },
@@ -74,6 +78,10 @@ Create `config.json` in your project directory (start from `references/config-ex
   "ffprobe": "ffprobe"
 }
 ```
+
+`asr.provider`: `"local"` (default — mlx-whisper, offline, no key) or `"openai"` (whisper-1 API).
+Local extras: `asr.python` (interpreter path), `asr.prompt` (initial prompt; the default
+「以下是繁體中文的句子。」 keeps Whisper from answering in Simplified — set `""` to disable).
 
 ---
 
@@ -151,8 +159,9 @@ only at real breath points. Subtitles still use the original punctuated text.
 
 ## Step 2: Slides
 
-Two first-class paths. Pick ONE per video (Path A is our channel default; Path B has no
-image-API dependency).
+Two first-class paths. Pick ONE per video. **Path B is the default for this install** —
+no image API; you (the agent) write the HTML. Path A was the original channel default and
+needs `OPENAI_API_KEY` for gpt-image-2.
 
 ### Path A — gpt-image-2 hand-drawn teaching style (`scripts/slides_gen.py`)
 
@@ -207,7 +216,7 @@ node scripts/tts_with_asr.js [project_dir]
 ```
 
 Reads `narration.json`, synthesizes each entry via ElevenLabs, saves `audio/slide_XX.mp3`,
-then **verifies every clip with Whisper ASR**:
+then **verifies every clip with Whisper ASR** (local mlx-whisper by default — `scripts/asr.js`):
 
 1. Transcribe the generated audio
 2. Compute character-overlap similarity vs the original text
@@ -222,7 +231,7 @@ false alarms on Chinese: same-sound different-tone homophones, digits vs 中文�
 Simplified output vs Traditional script. If the ASR "errors" are homophones and every
 key word/number comes through, the audio is correct — keep the best attempt. The slide
 shows the number visually and the subtitle uses the original text, so the viewer has
-triple redundancy. For digit-heavy narration, run `python scripts/rescore.py` — it
+triple redundancy. For digit-heavy narration, run `.venv/bin/python scripts/rescore.py` (repo venv has pypinyin) — it
 strips numerals and compares toneless-pinyin multisets (≥0.90 = pass), which kills
 most false failures. A real defect = ASR gets the SAME wrong word consistently across
 multiple synth attempts (that's the TTS mispronouncing, not Whisper mishearing → rewrite
@@ -307,7 +316,19 @@ references/lessons-learned.md § subtitle alignment.
 
 ---
 
-## Step 7: Cover / Thumbnail (`scripts/cover_gen.py`)
+## Step 7: Cover / Thumbnail
+
+**Default (no image API): `scripts/cover_html.js`.** Copy `references/cover-template.html`
+to `cover.html` in the project, fill in the text, then:
+
+```bash
+node scripts/cover_html.js      # → thumbnail.jpg, 1280×720, auto-kept ≤2MB
+```
+
+One big title (≤12 CJK chars) + one short hook — thumbnails are seen tiny. Open the JPG
+and check it before shipping.
+
+**Path A alternative (needs `OPENAI_API_KEY`): `scripts/cover_gen.py`.**
 
 ```bash
 python scripts/cover_gen.py "一張 YouTube 影片封面，橫式 16:9，白底手繪教學風…主標題用超大粗黑體繁體中文寫「你的標題」…"
@@ -356,6 +377,7 @@ my-video-project/
 ├── video.mp4                ← assembled (no subtitles)
 ├── subtitles_aligned.srt    ← aligned subtitle track
 ├── video_sub.mp4            ← (optional) burned-in version
+├── cover.html               ← (default) cover source for cover_html.js
 └── thumbnail.jpg            ← cover, 1280×720
 ```
 
@@ -367,7 +389,7 @@ All scripts take the project directory as an optional first argument (default: C
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/slides_gen.py` | gpt-image-2 slide generation from slides_prompts.json |
+| `scripts/slides_gen.py` | gpt-image-2 slide generation from slides_prompts.json (needs OPENAI_API_KEY) |
 | `scripts/pad_and_burn.js` | pad 3:2 images to 16:9 + subtitle band / burn SRT |
 | `scripts/screenshot.js` | Playwright HTML→PNG screenshots |
 | `scripts/generate_slides.js` | Node Canvas fallback slide renderer |
@@ -375,7 +397,10 @@ All scripts take the project directory as an optional first argument (default: C
 | `scripts/assemble.js` | FFmpeg per-slide clips + concat |
 | `scripts/gen_subtitles.js` | aligned SRT (whisper timing + original text) |
 | `scripts/rescore.py` | homophone/digit-tolerant second-chance ASR scoring |
-| `scripts/cover_gen.py` | gpt-image-2 cover generation |
+| `scripts/cover_gen.py` | gpt-image-2 cover generation (needs OPENAI_API_KEY) |
+| `scripts/cover_html.js` | HTML cover → thumbnail.jpg via Playwright (no image API) |
+| `scripts/asr.js` | shared ASR helper: local mlx-whisper or OpenAI, per `asr.provider` |
+| `scripts/asr_local.py` | mlx-whisper CLI, prints OpenAI-style verbose_json with word timestamps |
 
 ---
 

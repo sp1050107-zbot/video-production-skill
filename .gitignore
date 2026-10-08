@@ -10,3 +10,5 @@ verify*.png
 cover_raw.png
 thumbnail.*
 __pycache__/
+.venv/
+.serena/

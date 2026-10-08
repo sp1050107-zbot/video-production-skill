@@ -10,12 +10,19 @@ This rescores the kept audio with:
   2. toneless-pinyin multiset overlap similarity  (>=0.90 = pass)
 
 Usage: python rescore.py [project_dir]   (default: cwd)
-Needs: OPENAI_API_KEY (env var or .env in project dir), pip install pypinyin.
+Needs: pip install pypinyin (already in the repo .venv), plus either local mlx-whisper
+(default, config.asr.provider = "local") or OPENAI_API_KEY with asr.provider = "openai".
 Caches transcripts in temp/asr_full_NN.txt (re-runs are free).
 """
-import os, sys, json, re, pathlib, urllib.request, uuid
+import os, sys, json, re, pathlib, subprocess, urllib.request, uuid
 
 PROJ = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+
+CFG_P = PROJ / "config.json"
+CFG = json.loads(CFG_P.read_text(encoding="utf-8")) if CFG_P.exists() else {}
+ASR = CFG.get("asr", {})
+PROVIDER = ASR.get("provider", "local")
+SCRIPTS = pathlib.Path(__file__).resolve().parent
 
 KEY = os.environ.get("OPENAI_API_KEY")
 if not KEY:
@@ -24,7 +31,8 @@ if not KEY:
         for line in envf.read_text(encoding="utf-8").splitlines():
             if line.startswith("OPENAI_API_KEY="):
                 KEY = line.split("=", 1)[1].strip().strip('"').strip("'"); break
-assert KEY, "OPENAI_API_KEY not set (env var or .env in project dir)"
+if PROVIDER == "openai":
+    assert KEY, "asr.provider is openai but OPENAI_API_KEY not set (env var or .env in project dir)"
 
 from pypinyin import lazy_pinyin
 
@@ -35,6 +43,8 @@ NUMERALS = set("0123456789〇零一二三四五六七八九十百千萬万兩两
 CJK = re.compile(r"[一-鿿]")
 
 def transcribe(mp3):
+    if PROVIDER == "local":
+        return transcribe_local(mp3)
     boundary = "----b" + uuid.uuid4().hex
     data = mp3.read_bytes()
     parts = []
@@ -49,6 +59,15 @@ def transcribe(mp3):
         headers={"Authorization": f"Bearer {KEY}", "Content-Type": f"multipart/form-data; boundary={boundary}"})
     with urllib.request.urlopen(req, timeout=120) as r:
         return json.loads(r.read())["text"]
+
+def transcribe_local(mp3):
+    venv = SCRIPTS.parent / ".venv" / "bin" / "python"
+    py = ASR.get("python") or os.environ.get("VP_PYTHON") or (str(venv) if venv.exists() else sys.executable)
+    cmd = [py, str(SCRIPTS / "asr_local.py"), str(mp3), "--lang", ASR.get("language", "zh")]
+    if ASR.get("localModel"): cmd += ["--model", ASR["localModel"]]
+    if "prompt" in ASR: cmd += ["--prompt", ASR["prompt"]]
+    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+    return json.loads(out.strip().splitlines()[-1])["text"]
 
 def strip_numerals(s):
     return "".join(c for c in s if c not in NUMERALS)

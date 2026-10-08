@@ -7,8 +7,8 @@
     "stripPunctuation": true
   },
   "asr": {
-    "provider": "openai",
-    "model": "whisper-1",
+    "provider": "local",
+    "localModel": "mlx-community/whisper-large-v3-turbo",
     "language": "zh",
     "passThreshold": 0.85
   },
@@ -22,7 +22,7 @@
     "bgColor": "#1a1a2e",
     "accentColor": "#e94560",
     "titleSize": 50,
-    "fontFamily": "'Microsoft JhengHei', 'Noto Sans TC', sans-serif"
+    "fontFamily": "'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif"
   },
   "branding": {
     "watermark": "🎬 Your Channel Name",
