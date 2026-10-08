@@ -1,6 +1,7 @@
 /* Generate aligned SRT: Whisper word timestamps for timing, ORIGINAL narration text
    for display (ASR output mishears — never use it as subtitle text).
-   Offsets come from ACTUAL clip durations (ffprobe on temp/clip_XX.mp4), which avoids
+   Offsets come from temp/segments.json (written by assemble.js) or, for older projects,
+   ACTUAL clip durations (ffprobe on temp/clip_XX.mp4), which avoids
    the -shortest drift bug (assuming audioDur+padding drifts +1s per slide).
 
    Usage: node gen_subtitles.js [project_dir]
@@ -18,7 +19,12 @@ if((cfg.asr?.provider||'local')==='openai'&&!process.env.OPENAI_API_KEY){console
 const narration=JSON.parse(fs.readFileSync(path.join(DIR,'narration.json'),'utf8'));
 const N=narration.length;
 
-function clipDur(i){const p=path.join(DIR,'temp',`clip_${String(i+1).padStart(2,'0')}.mp4`);return parseFloat(execSync(`"${FFPROBE}" -v error -show_entries format=duration -of csv=p=0 "${p}"`,{encoding:'utf8'}).trim());}
+// Slide durations: temp/segments.json from assemble.js (exact frame-aligned lengths) if present,
+// else measure the legacy per-slide temp/clip_XX.mp4 files.
+const segP=path.join(DIR,'temp','segments.json');
+let SEG=fs.existsSync(segP)?JSON.parse(fs.readFileSync(segP,'utf8')).segments:null;
+if(SEG&&SEG.length!==N){console.log(`temp/segments.json has ${SEG.length} slides, narration has ${N} — re-run assemble.js; falling back to clip files`);SEG=null;}
+function clipDur(i){if(SEG)return SEG[i].duration;const p=path.join(DIR,'temp',`clip_${String(i+1).padStart(2,'0')}.mp4`);return parseFloat(execSync(`"${FFPROBE}" -v error -show_entries format=duration -of csv=p=0 "${p}"`,{encoding:'utf8'}).trim());}
 
 function whisperWords(mp3){return asr.transcribe(mp3,cfg);}
 

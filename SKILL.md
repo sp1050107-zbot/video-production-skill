@@ -245,8 +245,15 @@ that word).
 node scripts/assemble.js [project_dir]
 ```
 
-Pairs each `slides/slide_XX.png` with `audio/slide_XX.mp3`, creates per-slide clips,
-concatenates into `video.mp4`.
+Pairs each `slides/slide_XX.png` with `audio/slide_XX.mp3` and builds `video.mp4` in ONE
+ffmpeg pass: every slide lasts a whole number of frames (`ceil((narration + slidePadding) × fps)`),
+all narration is decoded, zero-padded to those exact frame boundaries and AAC-encoded once.
+Slide starts go to `temp/segments.json` (gen_subtitles.js reads it). `slidePadding` is now
+real silence after each slide (the old per-clip `-shortest` silently dropped it).
+
+> 🔴 Never assemble by encoding one clip per slide and `concat -c copy`: each seam added
+> ~30 ms of narration lag (13 slides → +412 ms at the end). Verify any video with
+> `.venv/bin/python scripts/check_sync.py [project_dir]` (fails if |drift| > 20 ms).
 
 Key flags (all already in the script):
 - `-b:a 192k` — without it audio can silently render at 2kbps (present but inaudible)
@@ -394,7 +401,8 @@ All scripts take the project directory as an optional first argument (default: C
 | `scripts/screenshot.js` | Playwright HTML→PNG screenshots |
 | `scripts/generate_slides.js` | Node Canvas fallback slide renderer |
 | `scripts/tts_with_asr.js` | ElevenLabs TTS + Whisper ASR verification loop |
-| `scripts/assemble.js` | FFmpeg per-slide clips + concat |
+| `scripts/assemble.js` | frame-aligned single-pass assembly (one audio encode) |
+| `scripts/check_sync.py` | measures per-slide audio/visual drift in the finished video |
 | `scripts/gen_subtitles.js` | aligned SRT (whisper timing + original text) |
 | `scripts/rescore.py` | homophone/digit-tolerant second-chance ASR scoring |
 | `scripts/cover_gen.py` | gpt-image-2 cover generation (needs OPENAI_API_KEY) |
