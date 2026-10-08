@@ -166,9 +166,12 @@ Before any video production task, read ~/.agents/skills/video-production/SKILL.m
 
 ## 6. 維護
 
-- 本機修改都在 branch `claude-local-asr`;`main` 保持跟上游一致。
-- 跟進上游更新:
+- 本機客製版合併在你自己 fork 的 `main`(`sp1050107-zbot/video-production-skill`),不影響原作者的 repo。
+- Remote 設定:`origin` = 你的 fork;`upstream` = 原作者 `speechlab0210/video-production-skill`,**只能拉、不能推**(push 網址已設為 `DISABLED`)。
+- 跟進原作者更新(注意是從 `upstream` 拉,`git pull` 只會拉到你自己的 fork):
   ```bash
-  cd ~/video-production-skill && git checkout main && git pull && git checkout claude-local-asr && git merge main
+  cd ~/video-production-skill && git checkout main && git fetch upstream && git merge upstream/main && git push origin main
   ```
-- `.venv/`、`node_modules/`、`.env`、影音產物都已列在 `.gitignore`。
+  原作者若也改了同一個檔案(例如 `tts_with_asr.js`、`gen_subtitles.js`),合併時可能出現衝突,解完再 push。
+- 想把改動回饋給原作者:到 GitHub 開 PR 到 `speechlab0210/video-production-skill`,需要原作者同意才會合併。
+- `.venv/`、`node_modules/`、`.env`、`.serena/`、影音產物都已列在 `.gitignore`;commit 前仍建議掃一次有沒有 `sk_` / `sk-` 開頭的 key。
