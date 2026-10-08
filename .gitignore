@@ -12,3 +12,4 @@ thumbnail.*
 __pycache__/
 .venv/
 .serena/
+.ua/
