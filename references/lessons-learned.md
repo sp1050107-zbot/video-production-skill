@@ -228,3 +228,15 @@ This avoids regenerating N slides and re-synthesizing N TTS clips, and can't int
 **Cloned-voice onset-swallow:** some engines randomly swallow the short phrase before the first comma of a sentence. Fix = rewrite those sentences to start with a disposable filler (「原來，…」「後來，…」) so a swallowed onset loses nothing; then best-of-N and pick the attempt with complete onset + highest similarity.
 
 **Note on `assemble.js` `-loop 1 ... -shortest`:** the clip gets cut at audio length (configured padding does NOT extend it). Inter-slide gaps = trailing silence of one clip + leading silence of the next. Subtitle offsets using actual clip lengths are immune to this.
+
+---
+
+## Local-ASR / macOS install notes (2026-10, first video on this setup)
+
+1. **`tts_with_asr.js` kept the LAST attempt, not the best.** Every retry overwrote `audio/slide_NN.mp3`, while the log claimed "Keeping best attempt". Fixed: each attempt writes its own temp file and only the highest-similarity one is renamed into place. `--only 3,7` re-synthesizes just those slides.
+2. **Whisper switching to Simplified mid-clip = false FAIL.** One slide scored ~70% five times in a row; every word was correct, but the transcript drifted into 简体 (写好/说明/规定) so the character-overlap score tanked. `rescore.py` (toneless pinyin, script-agnostic) passed it at 98.9%. If a slide fails repeatedly, read the transcript before rewording.
+3. **Initial-prompt leakage.** The Traditional-Chinese nudge prompt was echoed back verbatim ("這是繁體中文的句子") on a 6-second window starting with an English name. `asr_local.py` now detects the leak and re-runs that clip without the prompt.
+4. **Subtitle 1-character orphans + overlaps.** Greedy width-16 splitting left cues like 「式」, whose 0.6s minimum then overlapped the next cue. `gen_subtitles.js` now splits evenly, keeps dropped commas as a space, and clamps every cue to end at or before the next one starts.
+5. **English premade ElevenLabs voices + `eleven_multilingual_v2` = heavy accent in Mandarin** (終端機→中段機, 視窗→實創; 66–84%). The same voice on **`eleven_v3`** scored 91.7% on the same text and 89–99% across a 13-slide video. Prefer a native Mandarin voice when you can list voices; otherwise try `eleven_v3`.
+6. **Homebrew `ffmpeg` has no libass → no `subtitles` filter → burn-in impossible.** `pad_and_burn.js burn` now says so and suggests a soft track: `ffmpeg -i video.mp4 -i subtitles_aligned.srt -c copy -c:s mov_text -metadata:s:s:0 language=chi video_softsub.mp4`.
+7. **ElevenLabs "API key ID" ≠ API key.** The dashboard shows a key *ID*; the secret starts with `sk_` and is shown only once at creation. Error: `api_key_id_used_as_api_key`. A key without `voices_read` can still synthesize but can't list voices.

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<!-- Cover template for scripts/cover_html.js (1280×720 → thumbnail.jpg).
+     Thumbnails are viewed tiny: ONE big title (≤12 chars), one short hook, one visual. -->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px; height: 720px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: #ffffff;
+    font-family: 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 70px 90px;
+    overflow: hidden; position: relative;
+  }
+  .kicker { font-size: 44px; font-weight: bold; color: #e94560; margin-bottom: 18px; }
+  .title {
+    font-size: 128px; font-weight: 900; line-height: 1.1;
+    text-shadow: 4px 4px 0 rgba(0,0,0,0.45);
+  }
+  .hook { font-size: 52px; margin-top: 30px; opacity: 0.92; }
+  .emoji { position: absolute; right: 80px; bottom: 60px; font-size: 220px; }
+  .channel { position: absolute; left: 90px; bottom: 36px; font-size: 28px; opacity: 0.7; }
+</style>
+</head>
+<body>
+  <div class="kicker"><!-- 小標,例如:3 分鐘看懂 --></div>
+  <div class="title"><!-- 主標題 --></div>
+  <div class="hook"><!-- 一句鉤子 --></div>
+  <div class="emoji">🎙️</div>
+  <div class="channel">🎬 Your Channel Name</div>
+</body>
+</html>
